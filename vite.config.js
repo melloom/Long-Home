@@ -9,8 +9,9 @@ export default defineConfig({
     open: true,
     hmr: {
       protocol: process.env.NODE_ENV === 'production' ? 'wss' : 'ws',
-      host: process.env.NODE_ENV === 'production' ? window.location.hostname : 'localhost',
-      port: process.env.NODE_ENV === 'production' ? 443 : 5173
+      host: process.env.NODE_ENV === 'production' ? 'closeloop.netlify.app' : 'localhost',
+      port: process.env.NODE_ENV === 'production' ? 443 : 5173,
+      clientPort: process.env.NODE_ENV === 'production' ? 443 : 5173
     }
   },
   publicDir: 'public',

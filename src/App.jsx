@@ -7,6 +7,7 @@ import LeadDisposition from './components/LeadDisposition';
 import CustomerService from './components/CustomerService';
 import AdminDashboard from './components/admin/AdminDashboard.jsx';
 import AdminLogin from './components/admin/AdminLogin';
+import AdminSetup from './components/admin/AdminSetup';
 import RebuttalForm from './components/admin/RebuttalForm';
 import CustomerServiceManager from './components/admin/CustomerServiceManager';
 import './styles/App.css';
@@ -51,6 +52,7 @@ function App() {
     <Router>
       <Routes>
         {/* Admin Routes */}
+        <Route path="/admin/setup" element={<AdminSetup />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route
           path="/admin/dashboard"

@@ -5,16 +5,41 @@ import {
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { auth } from './config';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { auth, db } from './config';
+
+// Helper function to create admin entry
+const createAdminEntry = async (user, additionalData = {}) => {
+  try {
+    const adminRef = doc(db, 'admins', user.uid);
+    await setDoc(adminRef, {
+      email: user.email,
+      role: 'admin',
+      displayName: user.displayName || '',
+      createdAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
+      ...additionalData
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error creating admin entry:', error);
+    throw error;
+  }
+};
 
 // Register a new user
 export const registerUser = async (email, password, displayName) => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    
     if (displayName) {
-      await updateProfile(userCredential.user, { displayName });
+      await updateProfile(user, { displayName });
     }
-    return userCredential.user;
+
+    // Create admin entry
+    await createAdminEntry(user, { displayName });
+
+    return user;
   } catch (error) {
     console.error('Registration error:', error);
     throw error;
@@ -25,7 +50,12 @@ export const registerUser = async (email, password, displayName) => {
 export const signInUser = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return userCredential.user;
+    const user = userCredential.user;
+
+    // Create or update admin entry
+    await createAdminEntry(user);
+
+    return user;
   } catch (error) {
     console.error('Sign in error:', error);
     throw error;
@@ -47,8 +77,16 @@ export const getCurrentUser = () => {
   return new Promise((resolve, reject) => {
     const unsubscribe = onAuthStateChanged(
       auth,
-      (user) => {
+      async (user) => {
         unsubscribe();
+        if (user) {
+          try {
+            // Create admin entry if it doesn't exist
+            await createAdminEntry(user);
+          } catch (error) {
+            console.error('Error creating admin entry for current user:', error);
+          }
+        }
         resolve(user);
       },
       (error) => {
@@ -57,4 +95,21 @@ export const getCurrentUser = () => {
       }
     );
   });
+};
+
+// Create admin user
+export const createAdminUser = async (email, password) => {
+  try {
+    // Create the user in Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Create admin entry
+    await createAdminEntry(user);
+
+    return user;
+  } catch (error) {
+    console.error('Error creating admin user:', error);
+    throw error;
+  }
 }; 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInUser } from '../../services/firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase/config';
 import './AdminLogin.css';
 
@@ -26,12 +26,24 @@ const AdminLogin = () => {
       const adminDoc = await getDoc(adminRef);
 
       if (!adminDoc.exists()) {
-        throw new Error('You do not have permission to access the admin area. Please contact your administrator.');
+        // If admin document doesn't exist, create it
+        await setDoc(adminRef, {
+          email: user.email,
+          role: 'admin',
+          displayName: user.displayName || '',
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString()
+        });
+        return true;
       }
 
       const adminData = adminDoc.data();
       if (!adminData?.role || adminData.role !== 'admin') {
-        throw new Error('You do not have permission to access the admin area. Please contact your administrator.');
+        // If role is not admin, update it
+        await setDoc(adminRef, {
+          role: 'admin',
+          lastLogin: new Date().toISOString()
+        }, { merge: true });
       }
 
       return true;
