@@ -641,7 +641,7 @@ const AdminDashboard = () => {
             {/* Category Performance */}
             <div className="dashboard-card category-performance" key="category-performance">
               <div className="category-header">
-                <h2>🎯 Category Insights</h2>
+              <h2>🎯 Category Insights</h2>
                 <div className="category-actions">
                   <button className="refresh-button" onClick={() => updateStats()}>
                     <span>🔄</span>
@@ -675,7 +675,7 @@ const AdminDashboard = () => {
 
                 <div className="category-distribution">
                   <div className="distribution-header">
-                    <h3>Category Distribution</h3>
+                  <h3>Category Distribution</h3>
                     <div className="distribution-legend">
                       <span className="legend-item">
                         <span className="legend-color" style={{ backgroundColor: '#4CAF50' }}></span>

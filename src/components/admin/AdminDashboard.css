@@ -991,7 +991,7 @@
   transition: all 0.2s;
   margin-top: 1rem;
   align-self: center;
-}
+  }
 
 .view-more-button:hover {
   background: #edf2f7;
