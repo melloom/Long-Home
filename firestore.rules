@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: check if user is an admin
+    function isAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Admins collection
+    match /admins/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Or use isAdmin();
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+      // Optional: allow write: if isAdmin(); for admin overrides
+    }
+
+    // Rebuttals collection
+    match /rebuttals/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Archived Rebuttals collection
+    match /archived_rebuttals/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Categories collection
+    match /categories/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Dispositions collection
+    match /dispositions/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Service Topics collection
+    match /serviceTopics/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Customer Service Categories collection
+    match /customerServiceCategories/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Global fallback for unmatched documents
+    match /{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+  }
+}
