@@ -18,10 +18,10 @@ const Home = () => {
   const [showSmartTipsModal, setShowSmartTipsModal] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [urgentRebuttal, setUrgentRebuttal] = useState(null);
-  const [isSimpleMode, setIsSimpleMode] = useState(false);
   const [selectedSimpleModeItem, setSelectedSimpleModeItem] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [relatedRebuttals, setRelatedRebuttals] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [categories, setCategories] = useState([]);
@@ -29,6 +29,11 @@ const Home = () => {
   const [simpleModeCategories, setSimpleModeCategories] = useState([]);
   const [adminUser, setAdminUser] = useState(null);
   const [rebuttals, setRebuttals] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentItemIndex, setCurrentItemIndex] = useState(0);
 
   // Add defaultContent object
   const defaultContent = {
@@ -695,18 +700,10 @@ const Home = () => {
 
       if (category) {
         // Switch to simple mode
-        setIsSimpleMode(true);
-        
-        // Find the specific item in the category
-        const categoryItem = category.items.find(item => 
+        setSelectedSimpleModeItem(category.items.find(item => 
           item.category === matchingDisposition.category
-        );
-
-        if (categoryItem) {
-          // Show the modal with the specific item
-          setSelectedSimpleModeItem(categoryItem);
-          setShowModal(true);
-        }
+        ));
+        setShowModal(true);
 
         // Scroll to the category
         setTimeout(() => {
@@ -874,6 +871,15 @@ const Home = () => {
     setShowModal(true);
   };
 
+  const handleNextItem = () => {
+    if (selectedCategory && selectedCategory.items) {
+      const nextIndex = (currentItemIndex + 1) % selectedCategory.items.length;
+      setCurrentItemIndex(nextIndex);
+      const nextItem = selectedCategory.items[nextIndex];
+      handleItemClick(nextItem);
+    }
+  };
+
   const renderModal = () => {
     if (showCommonObjectionsModal) {
       return (
@@ -883,9 +889,26 @@ const Home = () => {
               <div className="modal-header-content">
                 <h2>Common Objections & Responses</h2>
               </div>
-              <button className="modal-close" onClick={closeModal}>×</button>
+              <div className="modal-header-buttons">
+                <button 
+                  className="modal-expand" 
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  title={isExpanded ? "Collapse" : "Expand"}
+                >
+                  {isExpanded ? (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M8 3V5C8 5.53043 7.78929 6.03914 7.41421 6.41421C7.03914 6.78929 6.53043 7 6 7H4M4 7H8M4 7V3M16 3V5C16 5.53043 16.2107 6.03914 16.5858 6.41421C16.9609 6.78929 17.4696 7 18 7H20M20 7H16M20 7V3M8 21V19C8 18.4696 7.78929 17.9609 7.41421 17.5858C7.03914 17.2107 6.53043 17 6 17H4M4 17H8M4 17V21M16 21V19C16 18.4696 16.2107 17.9609 16.5858 17.5858C16.9609 17.2107 17.4696 17 18 17H20M20 17H16M20 17V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 8V4M4 4H8M4 4L9 9M20 8V4M20 4H16M20 4L15 9M4 16V20M4 20H8M4 20L9 15M20 16V20M20 20H16M20 20L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </button>
+                <button className="modal-close" onClick={closeModal}>×</button>
+              </div>
             </div>
-            <div className="modal-body">
+            <div className={`modal-body ${isExpanded ? 'expanded' : ''}`}>
               <div className="objection-list">
                 <div className="objection-item">
                   <h3>Need to Think About It</h3>
@@ -975,14 +998,47 @@ const Home = () => {
     if (showModal && selectedSimpleModeItem) {
       return (
         <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className={`modal-content ${isExpanded ? 'expanded' : ''}`} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-header-content">
                 <h2>{selectedSimpleModeItem.title}</h2>
               </div>
-              <button className="modal-close" onClick={closeModal}>×</button>
+              <div className="modal-header-buttons">
+                <button 
+                  className="modal-expand" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(!isExpanded);
+                  }}
+                  title={isExpanded ? "Collapse" : "Expand"}
+                >
+                  {isExpanded ? (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M8 3V5C8 5.53043 7.78929 6.03914 7.41421 6.41421C7.03914 6.78929 6.53043 7 6 7H4M4 7H8M4 7V3M16 3V5C16 5.53043 16.2107 6.03914 16.5858 6.41421C16.9609 6.78929 17.4696 7 18 7H20M20 7H16M20 7V3M8 21V19C8 18.4696 7.78929 17.9609 7.41421 17.5858C7.03914 17.2107 6.53043 17 6 17H4M4 17H8M4 17V21M16 21V19C16 18.4696 16.2107 17.9609 16.5858 17.5858C16.9609 17.2107 17.4696 17 18 17H20M20 17H16M20 17V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 8V4M4 4H8M4 4L9 9M20 8V4M20 4H16M20 4L15 9M4 16V20M4 20H8M4 20L9 15M20 16V20M20 20H16M20 20L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </button>
+                <button 
+                  className="modal-next" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNextItem();
+                  }}
+                  disabled={!selectedCategory || !selectedCategory.items || selectedCategory.items.length <= 1}
+                  title="Next Item"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </button>
+                <button className="modal-close" onClick={closeModal}>×</button>
+              </div>
             </div>
-            <div className="modal-body">
+            <div className={`modal-body ${isExpanded ? 'expanded' : ''}`}>
               {!showMoreOptions ? (
                 <div className="objection-item">
                   <div className="objection-header">
@@ -1025,6 +1081,18 @@ const Home = () => {
                               : selectedSimpleModeItem.content.pt2 || ''}
                           </p>
                         </div>
+                        <div className="rebuttal-actions">
+                          <button 
+                            className="next-button"
+                            onClick={() => handleNextItem()}
+                            disabled={!selectedCategory || !selectedCategory.items || selectedCategory.items.length <= 1}
+                          >
+                            Next Response
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                        </div>
                       </>
                     )}
                   </div>
@@ -1065,7 +1133,9 @@ const Home = () => {
                           cat.items.some(item => item.category === selectedSimpleModeItem.category)
                         );
                         if (category) {
-                          setIsSimpleMode(true);
+                          setSelectedSimpleModeItem(category.items.find(item => 
+                            item.category === selectedSimpleModeItem.category
+                          ));
                           setShowModal(false);
                           // Scroll to the category
                           const categoryElement = document.querySelector(`[data-category="${category.id}"]`);
@@ -1110,15 +1180,6 @@ const Home = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
-
-                  <div className="modal-footer">
-                    <button 
-                      className="back-button"
-                      onClick={() => setShowMoreOptions(false)}
-                    >
-                      Back to Details
-                    </button>
                   </div>
                 </div>
               )}
@@ -1202,9 +1263,59 @@ const Home = () => {
 
             console.log(`Category ${category.name} has ${categoryRebuttals.length} rebuttals`);
             
+            // Get description based on category name
+            let description = '';
+            switch (category.name) {
+              case 'Not Interested':
+                description = 'Handle objections from customers who are not interested in the service';
+                break;
+              case 'Spouse Consultation':
+                description = 'Manage situations where spouse approval is needed';
+                break;
+              case 'One Legger':
+                description = 'Handle single decision-maker scenarios';
+                break;
+              case 'Not Ready':
+                description = 'Address customers who need more time to decide';
+                break;
+              case 'Curious':
+                description = 'Engage with customers who are interested but have questions';
+                break;
+              case 'Time Concern':
+                description = 'Handle scheduling and timing-related objections';
+                break;
+              case 'Can\'t Afford':
+                description = 'Address budget and pricing concerns';
+                break;
+              case 'Spouse':
+                description = 'Manage situations requiring spouse involvement';
+                break;
+              case 'Price Phone':
+                description = 'Handle price-related phone inquiries';
+                break;
+              case 'Repair':
+                description = 'Address repair and maintenance concerns';
+                break;
+              case 'Government Grants':
+                description = 'Information about government assistance programs';
+                break;
+              case 'Reset Appointment':
+                description = 'Handle appointment rescheduling requests';
+                break;
+              case 'No Request':
+                description = 'Manage situations with no specific request';
+                break;
+              case 'Bad Reviews':
+                description = 'Address concerns about negative reviews';
+                break;
+              default:
+                description = `Handle ${category.name.toLowerCase()} related inquiries`;
+            }
+            
             return {
               id: category.id,
-              title: category.name,
+              name: category.name,
+              description: description,
               icon: category.icon || '📋',
               color: category.color || '#808080',
               items: categoryRebuttals.map(rebuttal => {
@@ -1269,83 +1380,124 @@ const Home = () => {
     loadData();
   }, []);
 
-  // Update the simple mode rendering to handle potential undefined values
-  const renderSimpleMode = () => (
-    <div className="simple-mode-container">
-      <div className="quick-navigation">
-        <div className="quick-nav-header">
-          <h2>Categories</h2>
+  const handleCategoryClick = (category) => {
+    setSelectedCategory(category);
+    setShowMoreOptions(false);
+    
+    // If the category has items, automatically show the first rebuttal
+    if (category.items && category.items.length > 0) {
+      const firstItem = category.items[0];
+      setSelectedSimpleModeItem({
+        ...firstItem,
+        content: {
+          pt1: typeof firstItem.content === 'string' ? firstItem.content : firstItem.content.pt1 || '',
+          pt2: typeof firstItem.content === 'string' ? '' : firstItem.content.pt2 || ''
+        }
+      });
+      setShowModal(true);
+      setIsExpanded(true);
+      
+      // Add timeout to ensure modal is rendered before scrolling
+      setTimeout(() => {
+        const rebuttalSection = document.querySelector('.modal-rebuttal-content');
+        if (rebuttalSection) {
+          rebuttalSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  };
+
+  const handleItemClick = (item) => {
+    setSelectedSimpleModeItem({
+      ...item,
+      content: {
+        pt1: typeof item.content === 'string' ? item.content : item.content.pt1 || '',
+        pt2: typeof item.content === 'string' ? '' : item.content.pt2 || ''
+      }
+    });
+    setShowModal(true);
+    setIsExpanded(true);
+    
+    // Add timeout to ensure modal is rendered before scrolling
+    setTimeout(() => {
+      const rebuttalSection = document.querySelector('.modal-rebuttal-content');
+      if (rebuttalSection) {
+        rebuttalSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  };
+
+  const renderCategoryContent = () => {
+    if (!selectedCategory) {
+      return (
+        <div className="no-category-selected">
+          <h3>Select a Category</h3>
+          <p>Choose a category from the sidebar to view its items</p>
         </div>
-        {loading ? (
-          <div className="loading-spinner" />
-        ) : categories.length === 0 ? (
-          <div className="no-categories">
-            <p>No categories available. Please add some categories in the admin panel.</p>
+      );
+    }
+
+    return (
+      <div className="category-content active">
+        <div className="category-header">
+          <h2>
+            <span className="category-icon">
+              {selectedCategory.icon}
+            </span>
+            {selectedCategory.name}
+          </h2>
+          <p className="category-description">{selectedCategory.description}</p>
+        </div>
+        <div className="category-items">
+          {selectedCategory.items.map((item) => (
+            <div
+              key={item.id}
+              className="category-item"
+              onClick={() => handleItemClick(item)}
+            >
+              <h3>{item.title}</h3>
+              <p>{item.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSimpleMode = () => {
+    return (
+      <div className="simple-mode-container">
+        <div className="quick-navigation">
+          <div className="quick-nav-header">
+            <h2>Categories</h2>
           </div>
-        ) : (
           <div className="quick-nav-grid">
-            {simpleModeCategories.map(category => (
-              <button
+            {categories.map((category) => (
+              <div
                 key={category.id}
-                className="quick-nav-card"
-                onClick={() => {
-                  const element = document.querySelector(`[data-category="${category.id}"]`);
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}
-                style={{ 
-                  '--category-color': category.color || '#808080',
-                  '--category-gradient': `linear-gradient(135deg, ${category.color || '#808080'}, ${adjustColor(category.color || '#808080', -20)})`
-                }}
+                className={`quick-nav-card ${selectedCategory?.id === category.id ? 'active' : ''}`}
+                data-category={category.id}
+                onClick={() => handleCategoryClick(category)}
               >
                 <div className="quick-nav-card-content">
-                  <div className="quick-nav-icon">{category.icon || '📋'}</div>
+                  <div className="quick-nav-icon">
+                    {category.icon}
+                  </div>
                   <div className="quick-nav-info">
-                    <h3>{category.title || 'Untitled Category'}</h3>
-                    <p className="quick-nav-description">
-                      {category.items?.length || 0} rebuttals available
-                    </p>
+                    <h3>{category.name}</h3>
+                    <p className="quick-nav-description">{category.description}</p>
                   </div>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
-        )}
+        </div>
+        <div className="simple-mode-grid">
+          {renderCategoryContent()}
+        </div>
       </div>
-
-      <div className="simple-mode-grid">
-        {simpleModeCategories.map(category => (
-          <div 
-            key={category.id} 
-            className="simple-mode-category"
-            data-category={category.id}
-          >
-            <div className="category-header">
-              <div className="category-icon">{category.icon || '📋'}</div>
-              <h2 className="category-title">{category.title || 'Untitled Category'}</h2>
-            </div>
-            <div className="category-items">
-              {category.items && category.items.length > 0 ? (
-                category.items.map((item, index) => (
-                  <button
-                    key={index}
-                    className="category-item"
-                    onClick={() => handleSimpleModeItemClick(item)}
-                  >
-                    <h3 className="item-title">{item.title}</h3>
-                    <p className="item-description">{item.description}</p>
-                  </button>
-                ))
-              ) : (
-                <p className="no-items">No rebuttals available in this category.</p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+    );
+  };
 
   // Add click outside handler
   useEffect(() => {
@@ -1383,10 +1535,6 @@ const Home = () => {
     navigate('/');
   };
 
-  const handleAdminLogin = () => {
-    navigate('/admin/login');
-  };
-
   const handleAdminDashboard = () => {
     navigate('/admin/dashboard');
   };
@@ -1413,6 +1561,22 @@ const Home = () => {
     loadRebuttals();
   }, []);
 
+  // Add keyboard shortcut for admin login
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Check for Ctrl/Cmd + Shift + L
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        navigate('/admin/login');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [navigate]);
+
   return (
     <div className="home-container">
       {adminUser ? (
@@ -1424,11 +1588,7 @@ const Home = () => {
             Logout
           </button>
         </div>
-      ) : (
-        <button onClick={handleAdminLogin} className="admin-login-btn">
-          Admin Login
-        </button>
-      )}
+      ) : null}
       {renderModal()}
       <div className="home-content">
         {/* Hero Section */}
@@ -1443,227 +1603,12 @@ const Home = () => {
             <p className="hero-subtitle">
               Your intelligent assistant for mastering appointment setting, objection handling, and customer service excellence
             </p>
-            {/* Add Simple Mode Toggle */}
-            <div className="mode-toggle">
-              <button
-                className={`mode-toggle-button ${isSimpleMode ? 'active' : ''}`}
-                onClick={() => setIsSimpleMode(!isSimpleMode)}
-              >
-                {isSimpleMode ? 'Switch to Full Mode' : 'Switch to Simple Mode'}
-              </button>
-            </div>
           </div>
-
-          {/* Only show search section when not in simple mode */}
-          {!isSimpleMode && (
-            <div className="search-section">
-              <div className="search-container">
-                <div className="search-input-wrapper">
-                  <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/>
-                    <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <input
-                    type="text"
-                    placeholder="Search rebuttals, dispositions, or ask a question..."
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    onKeyDown={handleKeyDown}
-                    onFocus={() => {
-                      setShowQuickActions(true);
-                      if (searchTerm) setShowSuggestions(true);
-                    }}
-                    className="search-input"
-                    aria-label="Search"
-                    aria-expanded={showSuggestions}
-                    aria-controls="search-suggestions"
-                    role="combobox"
-                    aria-autocomplete="list"
-                  />
-                  <button 
-                    className="quick-actions-button"
-                    onClick={() => setShowQuickActions(!showQuickActions)}
-                    aria-label="Quick actions"
-                  >
-                    ⚡
-                  </button>
-                  {searchTerm && (
-                    <button 
-                      onClick={() => {
-                        setSearchTerm('');
-                        setShowSuggestions(false);
-                      }} 
-                      className="clear-search-button"
-                      aria-label="Clear search"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                  )}
-                </div>
-
-                {/* Combined Dropdown */}
-                {(showQuickActions || showSuggestions) && (
-                  <div className="search-dropdown">
-                    {/* Quick Actions Section */}
-                    {showQuickActions && (
-                      <div className="quick-actions-section">
-                        <div className="quick-actions-header">
-                          <h3>Quick Actions</h3>
-                        </div>
-                        <div className="quick-actions-grid">
-                          {quickActions.map(action => (
-                            <div
-                              key={action.id}
-                              className="quick-action-item"
-                              onClick={() => handleQuickAction(action)}
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  handleQuickAction(action);
-                                }
-                              }}
-                            >
-                              <span className="quick-action-icon">{action.icon}</span>
-                              <div className="quick-action-content">
-                                <h4>{action.title}</h4>
-                                <p>{action.description}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Search Suggestions Section */}
-                    {showSuggestions && searchSuggestions.length > 0 && (
-                      <div 
-                        className="search-suggestions-section"
-                        id="search-suggestions"
-                        role="listbox"
-                      >
-                        <div className="suggestions-header">
-                          <span>Smart Suggestions</span>
-                          <span className="suggestions-count">{searchSuggestions.length} results</span>
-                        </div>
-                        {searchSuggestions.map((suggestion, index) => (
-                          <button
-                            key={index}
-                            onClick={() => handleSuggestionClick(suggestion)}
-                            className={`suggestion-item ${index === selectedIndex ? 'selected' : ''}`}
-                            role="option"
-                            aria-selected={index === selectedIndex}
-                          >
-                            <span className="suggestion-icon">{suggestion.icon}</span>
-                            <div className="suggestion-content">
-                              <div className="suggestion-title">{suggestion.title}</div>
-                              <div className="suggestion-meta">
-                                {suggestion.category}
-                                {suggestion.relevance === 'high' && (
-                                  <span className="high-relevance">High Match</span>
-                                )}
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Quick Search Buttons */}
-                <div className="quick-searches">
-                  <span className="quick-search-label">Quick searches:</span>
-                  {quickSearchTerms.map((quickSearch, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleQuickSearch(quickSearch.term)}
-                      className="quick-search-btn"
-                      aria-label={`Quick search: ${quickSearch.term}`}
-                    >
-                      {quickSearch.term}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Simple Mode Content */}
-        {isSimpleMode ? renderSimpleMode() : (
-          // Original content
-          <>
-            {/* Navigation Section */}
-            <div className="navigation-section">
-              <div className="section-header">
-                <div className="section-logo">
-                  <span className="logo-icon">🏠</span>
-                  <h2 className="section-title">Training Modules</h2>
-                </div>
-              </div>
-              <div className="navigation-cards">
-                {navigationCards.map((card, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleCardClick(card)}
-                    className="nav-card"
-                  >
-                    <div className="card-header">
-                      <div className="card-icon">{card.icon}</div>
-                      <div className="card-badge">{card.title}</div>
-                    </div>
-                    <div className="card-content">
-                      <h3 className="card-title">{card.title}</h3>
-                      <p className="card-description">
-                        {card.description}
-                      </p>
-                      <div className="card-features">
-                        {card.features.map((feature, index) => (
-                          <span key={index}>{feature}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Quick Access Section */}
-            <div className="quick-access-section">
-              <h2 className="section-title">Quick Access</h2>
-              <div className="quick-access-cards">
-                <div className="access-card urgent">
-                  <div className="access-icon">🚨</div>
-                  <h3>Common Objections</h3>
-                  <p>Instant access to the most frequent customer objections and responses</p>
-                  <button 
-                    onClick={handleCommonObjections}
-                    className="access-btn"
-                  >
-                    View Now
-                  </button>
-                </div>
-
-                <div className="access-card helpful">
-                  <div className="access-icon">💡</div>
-                  <h3>Smart Tips</h3>
-                  <p>AI-powered suggestions based on your search patterns and common needs</p>
-                  <button 
-                    onClick={handleSmartTips}
-                    className="access-btn"
-                  >
-                    Get Tips
-                  </button>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+        {renderSimpleMode()}
       </div>
-      <BackToTop isSimpleMode={isSimpleMode} />
     </div>
   );
 };
