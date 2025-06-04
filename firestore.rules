@@ -13,59 +13,84 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // Admins collection
+    // Helper: validate data structure
+    function isValidRebuttal() {
+      return request.resource.data.keys().hasAll(['title', 'category', 'createdAt', 'updatedAt']) &&
+        request.resource.data.title is string &&
+        request.resource.data.category is string &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.updatedAt is timestamp;
+    }
+
+    // Helper: validate category structure
+    function isValidCategory() {
+      return request.resource.data.keys().hasAll(['name', 'createdAt', 'updatedAt']) &&
+        request.resource.data.name is string &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.updatedAt is timestamp;
+    }
+
+    // Admins collection - strict access
     match /admins/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated(); // Or use isAdmin();
+      allow read: if isAdmin();
+      allow create: if isAdmin() && request.auth.uid == userId;
+      allow update: if isAdmin() && request.auth.uid == userId;
+      allow delete: if isAdmin() && request.auth.uid == userId;
     }
 
-    // Users collection
+    // Users collection - strict access
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.auth.uid == userId;
-      // Optional: allow write: if isAdmin(); for admin overrides
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if isAdmin() && request.auth.uid == userId;
     }
 
-    // Rebuttals collection
+    // Rebuttals collection - public read, admin write
     match /rebuttals/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow create: if isAdmin() && isValidRebuttal();
+      allow update: if isAdmin() && isValidRebuttal();
+      allow delete: if isAdmin();
     }
 
-    // Archived Rebuttals collection
+    // Archived Rebuttals collection - admin only
     match /archived_rebuttals/{document=**} {
-      allow read: if true;
-      allow write: if isAuthenticated();
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
-    // Categories collection
+    // Categories collection - public read, admin write
     match /categories/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow create: if isAdmin() && isValidCategory();
+      allow update: if isAdmin() && isValidCategory();
+      allow delete: if isAdmin();
     }
 
-    // Dispositions collection
+    // Dispositions collection - public read, admin write
     match /dispositions/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // Service Topics collection
+    // Service Topics collection - public read, admin write
     match /serviceTopics/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // Customer Service Categories collection
+    // Customer Service Categories collection - public read, admin write
     match /customerServiceCategories/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // Global fallback for unmatched documents
+    // Global fallback - deny all unmatched documents
     match /{document=**} {
-      allow read: if true;
-      allow write: if isAuthenticated();
+      allow read, write: if false;
     }
   }
 }

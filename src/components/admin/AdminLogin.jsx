@@ -117,6 +117,15 @@ const AdminLogin = () => {
   if (showDisplayNamePrompt) {
     return (
       <div className="admin-login-container">
+        <button 
+          className="back-button"
+          onClick={() => navigate('/')}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Back to Home
+        </button>
         <div className="admin-login-card">
           <div className="admin-login-header">
             <h1>Set Your Display Name</h1>
@@ -157,6 +166,15 @@ const AdminLogin = () => {
 
   return (
     <div className="admin-login-container">
+      <button 
+        className="back-button"
+        onClick={() => navigate('/')}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Back to Home
+      </button>
       <div className="admin-login-card">
         <div className="admin-login-header">
           <h1>Admin Login</h1>

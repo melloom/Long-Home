@@ -30,6 +30,75 @@ const Home = () => {
   const [adminUser, setAdminUser] = useState(null);
   const [rebuttals, setRebuttals] = useState([]);
 
+  // Add defaultContent object
+  const defaultContent = {
+    'not-interested': {
+      steps: [
+        'Listen to customer concerns',
+        'Address specific needs',
+        'Present solution',
+        'Follow up as needed'
+      ],
+      tips: [
+        'Be professional and courteous',
+        'Focus on customer needs',
+        'Provide clear information'
+      ]
+    },
+    'price-phone': {
+      steps: [
+        'Acknowledge price concern',
+        'Explain value proposition',
+        'Offer flexible options',
+        'Follow up with details'
+      ],
+      tips: [
+        'Emphasize quality and value',
+        'Be prepared with pricing options',
+        'Highlight unique benefits'
+      ]
+    },
+    'spouse-consultation': {
+      steps: [
+        'Acknowledge need for joint decision',
+        'Offer to schedule joint meeting',
+        'Prepare comprehensive information',
+        'Follow up with both parties'
+      ],
+      tips: [
+        'Respect decision-making process',
+        'Offer flexible scheduling',
+        'Provide detailed information'
+      ]
+    },
+    'time-concern': {
+      steps: [
+        'Acknowledge time constraints',
+        'Offer flexible scheduling',
+        'Provide quick overview',
+        'Schedule follow-up'
+      ],
+      tips: [
+        'Be concise and clear',
+        'Offer multiple time slots',
+        'Respect their schedule'
+      ]
+    },
+    'callback': {
+      steps: [
+        'Get preferred callback time',
+        'Confirm contact information',
+        'Note specific concerns',
+        'Schedule callback'
+      ],
+      tips: [
+        'Be punctual with callbacks',
+        'Prepare relevant information',
+        'Follow up as scheduled'
+      ]
+    }
+  };
+
   const navigationCards = [
     {
       id: 'rebuttals',
@@ -155,18 +224,27 @@ const Home = () => {
     }
   ];
 
-  // Add common misspellings mapping
+  // Enhanced search patterns for better matching
+  const searchPatterns = {
+    'how to': ['how do i', 'how can i', 'how do you', 'how to', 'how can', 'how should', 'how would'],
+    'when can': ['when can i', 'when is', 'when will', 'when should', 'when do', 'when to', 'when are'],
+    'where to': ['where can i', 'where do i', 'where is', 'where to', 'where are', 'where should'],
+    'what is': ['whats', 'what is', 'what are', 'what do', 'what will', 'what should', 'what can'],
+    'why do': ['why does', 'why is', 'why are', 'why do', 'why should', 'why would', 'why can'],
+    'can i': ['can you', 'is it possible', 'is there a way', 'can i', 'could i', 'would you', 'may i'],
+    'need to': ['want to', 'have to', 'should i', 'need to', 'looking to', 'trying to', 'planning to'],
+    'looking for': ['searching for', 'trying to find', 'want to find', 'looking for', 'need to find', 'seeking']
+  };
+
+  // Enhanced common misspellings
   const commonMisspellings = {
     'hoem': 'home',
     'paeg': 'page',
-    'alhte': 'all the',
     'serach': 'search',
     'ebveythgin': 'everything',
     'arch': 'search',
     'shoudl': 'should',
     'eveythung': 'everything',
-    'do': 'to',
-    'more': 'more',
     'rebuttals': 'rebuttals',
     'disposition': 'disposition',
     'customer': 'customer',
@@ -239,20 +317,6 @@ const Home = () => {
     'ontime': 'on time'
   };
 
-  // Add search patterns
-  const searchPatterns = {
-    'how to': ['how do i', 'how can i', 'how do you', 'how can you', 'how to', 'how do', 'how can'],
-    'when can': ['when can i', 'when can you', 'when do i', 'when do you', 'when to', 'when will'],
-    'what is': ['what is', 'what are', 'what does', 'what do', 'what will', 'what should'],
-    'where to': ['where to', 'where can i', 'where do i', 'where is', 'where are'],
-    'why is': ['why is', 'why are', 'why does', 'why do', 'why will', 'why should'],
-    'can i': ['can i', 'can you', 'could i', 'could you', 'may i', 'would you'],
-    'i need': ['i need', 'i want', 'i would like', 'i am looking for', 'i am trying to'],
-    'help with': ['help with', 'help me', 'assist with', 'assist me', 'support with', 'support me'],
-    'looking for': ['looking for', 'searching for', 'trying to find', 'want to find', 'need to find'],
-    'about': ['about', 'regarding', 'concerning', 'related to', 'pertaining to']
-  };
-
   // Add function to correct spelling
   const correctSpelling = (text) => {
     const words = text.toLowerCase().split(' ');
@@ -311,12 +375,20 @@ const Home = () => {
   };
 
   const extractKeywords = (text) => {
+    if (!text) return [];
     const words = text.toLowerCase().split(/\s+/);
-    const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'about', 'as', 'of', 'from']);
+    const stopWords = new Set([
+      'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'about', 'as', 'of', 'from',
+      'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
+      'shall', 'should', 'may', 'might', 'must', 'can', 'could', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me',
+      'him', 'her', 'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their', 'mine', 'yours', 'hers', 'ours', 'theirs'
+    ]);
     return words.filter(word => !stopWords.has(word) && word.length > 2);
   };
 
   const getSemanticScore = (query, text) => {
+    if (!query || !text) return 0;
+    
     const queryKeywords = extractKeywords(query);
     const textKeywords = extractKeywords(text);
     
@@ -333,7 +405,7 @@ const Home = () => {
     return score / Math.max(queryKeywords.length, 1);
   };
 
-  // Update the performIntelligentSearch function
+  // Enhanced search function with better matching
   const performIntelligentSearch = (query) => {
     if (!query.trim()) {
       setSearchSuggestions([]);
@@ -344,27 +416,20 @@ const Home = () => {
     const suggestions = [];
     const seenTitles = new Set();
 
-    // Check for question patterns
-    const isQuestion = normalizedQuery.includes('what') || 
-                      normalizedQuery.includes('how') || 
-                      normalizedQuery.includes('why') ||
-                      normalizedQuery.includes('when') ||
-                      normalizedQuery.includes('where');
+    // Check for question patterns with enhanced detection
+    const isQuestion = /^(what|how|why|when|where|can|could|would|should|may|do|does|is|are|will)/i.test(normalizedQuery);
 
-    // Special handling for callback-related searches
-    const isCallbackSearch = normalizedQuery.includes('callback') || 
-                            normalizedQuery.includes('call back') ||
-                            normalizedQuery.includes('call me back') ||
-                            normalizedQuery.includes('call later');
+    // Enhanced callback detection
+    const isCallbackSearch = /(call\s*back|callback|call\s*later|call\s*me\s*back|call\s*you\s*back)/i.test(normalizedQuery);
 
-    // Search rebuttals with enhanced matching
+    // Search rebuttals with improved matching
     rebuttals.forEach(rebuttal => {
       if (seenTitles.has(rebuttal.title)) return;
       
       const titleMatch = rebuttal.title.toLowerCase().includes(normalizedQuery);
       const categoryMatch = rebuttal.category.toLowerCase().includes(normalizedQuery);
       
-      // Enhanced content matching
+      // Enhanced content matching with semantic scoring
       let contentMatch = false;
       let semanticScore = 0;
       
@@ -382,11 +447,12 @@ const Home = () => {
         );
       }
       
+      // Enhanced tag matching
       const tagMatch = rebuttal.tags?.some(tag => tag.toLowerCase().includes(normalizedQuery));
       const tagSemanticScore = rebuttal.tags?.reduce((max, tag) => 
         Math.max(max, getSemanticScore(normalizedQuery, tag)), 0) || 0;
 
-      // Calculate overall relevance score
+      // Improved relevance scoring
       const relevanceScore = 
         (titleMatch ? 1 : 0) * 0.4 +
         (categoryMatch ? 1 : 0) * 0.2 +
@@ -395,7 +461,7 @@ const Home = () => {
         semanticScore * 0.1 +
         tagSemanticScore * 0.1;
 
-      // For callbacks, prioritize callback-related rebuttals
+      // Enhanced callback handling
       if (isCallbackSearch && (rebuttal.category === 'callback' || rebuttal.title.toLowerCase().includes('callback'))) {
         suggestions.push({
           type: 'rebuttal',
@@ -403,12 +469,12 @@ const Home = () => {
           category: rebuttal.category,
           icon: '📞',
           relevance: 'high',
-          score: relevanceScore + 0.5, // Boost callback-related items
+          score: relevanceScore + 0.5,
           data: rebuttal
         });
         seenTitles.add(rebuttal.title);
       }
-      // For questions, prioritize content matches
+      // Enhanced question handling
       else if (isQuestion && (contentMatch || semanticScore > 0.3)) {
         suggestions.push({
           type: 'modal',
@@ -416,12 +482,12 @@ const Home = () => {
           category: rebuttal.category,
           icon: getCategoryIcon(rebuttal.category),
           relevance: 'high',
-          score: relevanceScore + 0.3, // Boost question-related items
+          score: relevanceScore + 0.3,
           data: rebuttal
         });
         seenTitles.add(rebuttal.title);
       }
-      // Regular matching with minimum relevance threshold
+      // Regular matching with improved threshold
       else if (relevanceScore > 0.2) {
         suggestions.push({
           type: 'rebuttal',
@@ -436,7 +502,7 @@ const Home = () => {
       }
     });
 
-    // Search dispositions with enhanced matching
+    // Enhanced disposition search
     leadDispositions.forEach(disposition => {
       const nameMatch = disposition.name.toLowerCase().includes(normalizedQuery);
       const keywordMatch = disposition.keywords.some(keyword => 
@@ -466,10 +532,8 @@ const Home = () => {
       }
     });
 
-    // Sort suggestions by relevance score
+    // Sort suggestions by relevance score and limit to top 10
     suggestions.sort((a, b) => b.score - a.score);
-
-    // Limit suggestions to top 10
     setSearchSuggestions(suggestions.slice(0, 10));
   };
 
@@ -732,102 +796,31 @@ const Home = () => {
       rebuttal.title.toLowerCase() === item.title.toLowerCase()
     );
 
-    // Default steps and tips based on category
-    const defaultContent = {
-      'spouse-consultation': {
-        steps: [
-          'Acknowledge the need for joint decision',
-          'Offer to schedule a time when both can be present',
-          'Provide information they can review together',
-          'Follow up with both parties'
-        ],
-        tips: [
-          'Be respectful of their decision-making process',
-          'Offer to send materials they can review together',
-          'Suggest a specific time for a joint call'
-        ]
-      },
-      'one-legger': {
-        steps: [
-          'Confirm they are the decision maker',
-          'Gather all necessary information',
-          'Present clear options and benefits',
-          'Ask for their decision'
-        ],
-        tips: [
-          'Be direct and clear in your communication',
-          'Focus on key benefits and value',
-          'Ask open-ended questions to understand needs'
-        ]
-      },
-      'time-concern': {
-        steps: [
-          'Acknowledge their time constraints',
-          'Offer flexible scheduling options',
-          'Highlight the value of the service',
-          'Propose a quick solution'
-        ],
-        tips: [
-          'Be concise and to the point',
-          'Offer multiple time slots',
-          'Emphasize efficiency of the process'
-        ]
-      },
-      'callback': {
-        steps: [
-          'Confirm the best time for callback',
-          'Get alternative contact methods',
-          'Set specific callback time',
-          'Confirm callback details',
-          'Document the callback request',
-          'Set a reminder for the callback',
-          'Prepare callback materials',
-          'Make the callback at scheduled time'
-        ],
-        tips: [
-          'Always call at the agreed time',
-          'Have all necessary information ready',
-          'Be prepared to reschedule if needed',
-          'Keep the conversation focused',
-          'Follow up if no answer',
-          'Document the callback outcome'
-        ]
-      },
-      'price-phone': {
-        steps: [
-          'Acknowledge price concern',
-          'Explain value proposition',
-          'Present pricing options',
-          'Offer to schedule consultation'
-        ],
-        tips: [
-          'Focus on value, not just price',
-          'Be prepared with pricing information',
-          'Offer flexible payment options'
-        ]
-      },
-      'not-interested': {
-        steps: [
-          'Listen to their concerns',
-          'Address specific objections',
-          'Present alternative solutions',
-          'Ask for feedback'
-        ],
-        tips: [
-          'Stay positive and professional',
-          'Understand their perspective',
-          'Leave door open for future contact'
-        ]
-      }
-    };
-
     if (matchingRebuttal) {
+      // Ensure content is properly structured
+      let content = {
+        pt1: '',
+        pt2: ''
+      };
+
+      // Handle different response formats
+      if (typeof matchingRebuttal.response === 'string') {
+        content.pt1 = matchingRebuttal.response;
+      } else if (matchingRebuttal.response && typeof matchingRebuttal.response === 'object') {
+        content = {
+          pt1: matchingRebuttal.response.pt1 || matchingRebuttal.response.initial || matchingRebuttal.response.part1 || '',
+          pt2: matchingRebuttal.response.pt2 || matchingRebuttal.response.followup || matchingRebuttal.response.part2 || ''
+        };
+      }
+
+      // Fallback to objection if no response
+      if (!content.pt1) {
+        content.pt1 = matchingRebuttal.objection || '';
+      }
+
       setSelectedSimpleModeItem({
         ...matchingRebuttal,
-        content: matchingRebuttal.content || {
-          pt1: 'Part 1 content will be displayed here.',
-          pt2: 'Part 2 content will be displayed here.'
-        },
+        content: content,
         steps: matchingRebuttal.steps || defaultContent[matchingRebuttal.category]?.steps || [
           'Listen to customer concerns',
           'Address specific needs',
@@ -842,12 +835,29 @@ const Home = () => {
       });
     } else {
       // Fallback to item data if no matching rebuttal found
+      let content = {
+        pt1: '',
+        pt2: ''
+      };
+
+      // Handle different response formats
+      if (typeof item.response === 'string') {
+        content.pt1 = item.response;
+      } else if (item.response && typeof item.response === 'object') {
+        content = {
+          pt1: item.response.pt1 || item.response.initial || item.response.part1 || '',
+          pt2: item.response.pt2 || item.response.followup || item.response.part2 || ''
+        };
+      }
+
+      // Fallback to objection if no response
+      if (!content.pt1) {
+        content.pt1 = item.objection || '';
+      }
+
       setSelectedSimpleModeItem({
         ...item,
-        content: item.content || {
-          pt1: 'Part 1 content will be displayed here.',
-          pt2: 'Part 2 content will be displayed here.'
-        },
+        content: content,
         steps: item.steps || defaultContent[item.category]?.steps || [
           'Listen to customer concerns',
           'Address specific needs',
@@ -877,18 +887,49 @@ const Home = () => {
             </div>
             <div className="modal-body">
               <div className="objection-list">
-                {rebuttals
-                  .filter(rebuttal => rebuttal.category === 'not-interested' || 
-                                    rebuttal.category === 'price-phone' ||
-                                    rebuttal.category === 'spouse-consultation')
-                  .map((rebuttal, index) => (
-                    <div key={index} className="objection-item">
-                      <h3>{rebuttal.title}</h3>
-                      <p>{typeof rebuttal.content === 'string' 
-                        ? rebuttal.content 
-                        : rebuttal.content.pt1 || rebuttal.response || 'No response available.'}</p>
-                    </div>
-                  ))}
+                <div className="objection-item">
+                  <h3>Need to Think About It</h3>
+                  <p>"I need to think about it"</p>
+                  <div className="response-section">
+                    <h4>Initial Response:</h4>
+                    <p>"That's completely understandable. Making home improvement decisions requires careful consideration. What specific aspects would you like to think about? I'd be happy to provide more information to help with your decision."</p>
+                    <h4>Follow-up Response:</h4>
+                    <p>"We're currently offering a special discount for customers who make a decision this week. Would you like to hear more about this limited-time offer?"</p>
+                  </div>
+                </div>
+
+                <div className="objection-item">
+                  <h3>Need to Consult Spouse</h3>
+                  <p>"I need to talk to my spouse"</p>
+                  <div className="response-section">
+                    <h4>Initial Response:</h4>
+                    <p>"That's a great point. It's important to make this decision together. Would it be helpful if I scheduled a time when both of you can be present to discuss the options?"</p>
+                    <h4>Follow-up Response:</h4>
+                    <p>"I can prepare a detailed proposal that you can review together. This will include all the information your spouse might need to make an informed decision."</p>
+                  </div>
+                </div>
+
+                <div className="objection-item">
+                  <h3>Not Ready to Buy</h3>
+                  <p>"I'm not ready to buy right now"</p>
+                  <div className="response-section">
+                    <h4>Initial Response:</h4>
+                    <p>"I understand. When are you planning to make this improvement? We can schedule a consultation for when you're ready to move forward."</p>
+                    <h4>Follow-up Response:</h4>
+                    <p>"We offer free consultations and estimates with no obligation. This can help you plan for when you're ready to proceed. Would you like to schedule one?"</p>
+                  </div>
+                </div>
+
+                <div className="objection-item">
+                  <h3>Looking for Cheaper Option</h3>
+                  <p>"I can get it cheaper elsewhere"</p>
+                  <div className="response-section">
+                    <h4>Initial Response:</h4>
+                    <p>"I appreciate you sharing that. While price is important, it's also crucial to consider the quality, warranty, and service that comes with your purchase. Our products come with a lifetime warranty and professional installation."</p>
+                    <h4>Follow-up Response:</h4>
+                    <p>"Let me show you a comparison of what's included in our price versus what you might be getting elsewhere. This will help you make a more informed decision."</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -950,54 +991,64 @@ const Home = () => {
                   </div>
 
                   <div className="rebuttal-content">
+                    <div className="modal-tags">
+                      {selectedSimpleModeItem.tags && selectedSimpleModeItem.tags.map(tag => (
+                        <span key={tag} className="modal-tag">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="modal-rebuttal-content">
+                    <div className="modal-section-header">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <h3>Rebuttal Responses</h3>
+                    </div>
                     {selectedSimpleModeItem.content && (
                       <>
-                        <div className="rebuttal-part">
-                          <h4>Part 1: Initial Response</h4>
-                          <p>{typeof selectedSimpleModeItem.content === 'string' 
-                            ? selectedSimpleModeItem.content 
-                            : selectedSimpleModeItem.content.pt1 || selectedSimpleModeItem.response || 'No initial response available.'}</p>
+                        <div className="rebuttal-section">
+                          <h4 className="rebuttal-section-title">Initial Response</h4>
+                          <p className="modal-content-text">
+                            {typeof selectedSimpleModeItem.content === 'string' 
+                              ? selectedSimpleModeItem.content 
+                              : selectedSimpleModeItem.content.pt1 || ''}
+                          </p>
                         </div>
-                        <div className="rebuttal-part">
-                          <h4>Part 2: Follow-up</h4>
-                          <p>{typeof selectedSimpleModeItem.content === 'string'
-                            ? selectedSimpleModeItem.content
-                            : selectedSimpleModeItem.content.pt2 || selectedSimpleModeItem.followUpResponse || 'No follow-up response available.'}</p>
+                        <div className="rebuttal-section">
+                          <h4 className="rebuttal-section-title">Follow-up Response</h4>
+                          <p className="modal-content-text">
+                            {typeof selectedSimpleModeItem.content === 'string'
+                              ? ''
+                              : selectedSimpleModeItem.content.pt2 || ''}
+                          </p>
                         </div>
                       </>
                     )}
-
-                    {selectedSimpleModeItem.steps && selectedSimpleModeItem.steps.length > 0 && (
-                      <div className="rebuttal-steps">
-                        <h4>Steps to Handle:</h4>
-                        <ul>
-                          {selectedSimpleModeItem.steps.map((step, index) => (
-                            <li key={index}>{step}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {selectedSimpleModeItem.tips && selectedSimpleModeItem.tips.length > 0 && (
-                      <div className="rebuttal-tips">
-                        <h4>Tips:</h4>
-                        <ul>
-                          {selectedSimpleModeItem.tips.map((tip, index) => (
-                            <li key={index}>{tip}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    <div className="modal-footer">
-                      <button 
-                        className="more-options-button"
-                        onClick={() => handleMoreOptions(selectedSimpleModeItem)}
-                      >
-                        More Options
-                      </button>
-                    </div>
                   </div>
+
+                  {selectedSimpleModeItem.tips && selectedSimpleModeItem.tips.length > 0 && (
+                    <div className="modal-tips">
+                      <div className="modal-section-header">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M12 16v.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                          <path d="M12 8v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                        <h3>Tips</h3>
+                      </div>
+                      <div className="tips-list">
+                        {selectedSimpleModeItem.tips.map((tip, index) => (
+                          <div key={index} className="tip-item">
+                            <div className="tip-icon">💡</div>
+                            <p className="tip-text">{tip}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="more-options-view">
@@ -1036,14 +1087,26 @@ const Home = () => {
                           key={index} 
                           className="related-rebuttal-item"
                           onClick={() => {
-                            setSelectedSimpleModeItem(relatedRebuttal);
+                            setSelectedSimpleModeItem({
+                              ...relatedRebuttal,
+                              content: {
+                                pt1: typeof relatedRebuttal.response === 'string' 
+                                  ? relatedRebuttal.response 
+                                  : relatedRebuttal.response?.pt1 || relatedRebuttal.objection || '',
+                                pt2: typeof relatedRebuttal.response === 'string'
+                                  ? ''
+                                  : relatedRebuttal.response?.pt2 || relatedRebuttal.followUpResponse || ''
+                              }
+                            });
                             setShowMoreOptions(false);
                           }}
                         >
                           <h5>{relatedRebuttal.title}</h5>
-                          <p>{typeof relatedRebuttal.content === 'string' 
-                            ? relatedRebuttal.content 
-                            : relatedRebuttal.content.pt1 || relatedRebuttal.response || 'No response available.'}</p>
+                          <p>
+                            {typeof relatedRebuttal.response === 'string'
+                              ? relatedRebuttal.response
+                              : relatedRebuttal.response?.pt1 || relatedRebuttal.objection || ''}
+                          </p>
                         </div>
                       ))}
                     </div>
@@ -1144,24 +1207,47 @@ const Home = () => {
               title: category.name,
               icon: category.icon || '📋',
               color: category.color || '#808080',
-              items: categoryRebuttals.map(rebuttal => ({
-                id: rebuttal.id,
-                title: rebuttal.title,
-                description: rebuttal.description || rebuttal.objection || rebuttal.summary || '',
-                category: category.id,
-                content: rebuttal.content || rebuttal.response,
-                steps: rebuttal.steps || [
-                  'Listen to customer concerns',
-                  'Address specific needs',
-                  'Present solution',
-                  'Follow up as needed'
-                ],
-                tips: rebuttal.tips || [
-                  'Be professional and courteous',
-                  'Focus on customer needs',
-                  'Provide clear information'
-                ]
-              }))
+              items: categoryRebuttals.map(rebuttal => {
+                // Ensure content is properly structured
+                let content = {
+                  pt1: '',
+                  pt2: ''
+                };
+
+                // Handle different response formats
+                if (typeof rebuttal.response === 'string') {
+                  content.pt1 = rebuttal.response;
+                } else if (rebuttal.response && typeof rebuttal.response === 'object') {
+                  content = {
+                    pt1: rebuttal.response.pt1 || rebuttal.response.initial || rebuttal.response.part1 || '',
+                    pt2: rebuttal.response.pt2 || rebuttal.response.followup || rebuttal.response.part2 || ''
+                  };
+                }
+
+                // Fallback to objection if no response
+                if (!content.pt1) {
+                  content.pt1 = rebuttal.objection || '';
+                }
+
+                return {
+                  id: rebuttal.id,
+                  title: rebuttal.title,
+                  description: rebuttal.description || rebuttal.objection || rebuttal.summary || '',
+                  category: category.id,
+                  content: content,
+                  steps: rebuttal.steps || [
+                    'Listen to customer concerns',
+                    'Address specific needs',
+                    'Present solution',
+                    'Follow up as needed'
+                  ],
+                  tips: rebuttal.tips || [
+                    'Be professional and courteous',
+                    'Focus on customer needs',
+                    'Provide clear information'
+                  ]
+                };
+              })
             };
           });
           

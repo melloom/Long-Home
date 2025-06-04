@@ -14,7 +14,8 @@ import {
   onSnapshotsInSync,
   getFirestore,
   writeBatch,
-  serverTimestamp
+  serverTimestamp,
+  getDoc
 } from 'firebase/firestore';
 import { auth } from '../firebase';
 
@@ -80,7 +81,7 @@ class RebuttalsService {
             await this.archiveRebuttal(operation.id);
             break;
           case 'unarchive':
-            await this.unarchiveRebuttal(operation.id);
+            await this.unarchiveRebuttal(operation.id, operation.category);
             break;
           case 'addCategory':
             await this.addCategory(operation.data);
@@ -354,6 +355,19 @@ class RebuttalsService {
   // Add a new rebuttal
   async addRebuttal(rebuttalData) {
     try {
+      // Check if user is authenticated and is admin
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('User must be authenticated to add rebuttals');
+      }
+
+      // Check if user is admin
+      const adminRef = doc(db, 'admins', user.uid);
+      const adminDoc = await getDoc(adminRef);
+      if (!adminDoc.exists()) {
+        throw new Error('Only admins can add rebuttals');
+      }
+
       if (!this.isOnline) {
         this.pendingOperations.push({
           type: 'add',
@@ -398,15 +412,24 @@ class RebuttalsService {
         rebuttalData.category = categoryId;
       }
 
+      // Validate required fields
+      if (!rebuttalData.title || !rebuttalData.category) {
+        throw new Error('Title and category are required fields');
+      }
+
       const docRef = await addDoc(this.rebuttalsCollection, {
         ...rebuttalData,
         archived: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdBy: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
       return docRef.id;
     } catch (error) {
       console.error('Error adding rebuttal:', error);
+      if (error.code === 'permission-denied') {
+        throw new Error('You do not have permission to add rebuttals. Please make sure you are logged in as an admin.');
+      }
       throw error;
     }
   }
@@ -474,29 +497,55 @@ class RebuttalsService {
   }
 
   // Unarchive a rebuttal
-  async unarchiveRebuttal(id) {
+  async unarchiveRebuttal(id, category) {
     try {
+      // Check if user is authenticated and is admin
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('User must be authenticated to unarchive rebuttals');
+      }
+
+      // Check if user is admin
+      const adminRef = doc(db, 'admins', user.uid);
+      const adminDoc = await getDoc(adminRef);
+      if (!adminDoc.exists()) {
+        throw new Error('Only admins can unarchive rebuttals');
+      }
+
       if (!this.isOnline) {
         this.pendingOperations.push({
           type: 'unarchive',
-          id
+          id,
+          category
         });
         return 'pending';
       }
 
+      // Get the archived rebuttal
       const archivedRef = doc(this.archivedCollection, id);
-      const archivedDoc = await getDocs(query(this.archivedCollection, where('__name__', '==', id)));
+      const archivedDoc = await getDoc(archivedRef);
       
-      if (!archivedDoc.empty) {
-        const archivedData = archivedDoc.docs[0].data();
-        const { archivedAt, ...rebuttalData } = archivedData;
-        await addDoc(this.rebuttalsCollection, {
-          ...rebuttalData,
-          updatedAt: new Date().toISOString()
-        });
-        await deleteDoc(archivedRef);
+      if (!archivedDoc.exists()) {
+        throw new Error('Archived rebuttal not found');
       }
-      return id;
+
+      const archivedData = archivedDoc.data();
+      
+      // Remove archived-specific fields
+      const { archivedAt, archivedReason, originalCategory, ...rebuttalData } = archivedData;
+
+      // Add back to active rebuttals with the new category
+      const newRebuttalRef = await addDoc(this.rebuttalsCollection, {
+        ...rebuttalData,
+        category: category || rebuttalData.category, // Use provided category or original
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp()
+      });
+
+      // Delete from archived rebuttals
+      await deleteDoc(archivedRef);
+
+      return newRebuttalRef.id;
     } catch (error) {
       console.error('Error unarchiving rebuttal:', error);
       throw error;
@@ -942,20 +991,6 @@ const DEFAULT_REBUTTALS = [
     tags: ["competition", "comparison", "value", "benefits"],
     steps: ["Acknowledge choice", "Present value", "Offer comparison", "Highlight differences"],
     tips: ["Stay professional", "Focus on strengths", "Respect competition"]
-  },
-  {
-    title: "Too Expensive",
-    category: "cant-afford",
-    objection: "Your service is too expensive",
-    response: {
-      pt1: "I understand your concern about the price. Let me explain how our service actually saves you money in the long run through efficiency and prevention.",
-      pt2: "We also have flexible payment options and a current promotion that might make this more affordable than you think. Would you like to hear about these options?"
-    },
-    icon: "💰",
-    color: "#9B59B6",
-    tags: ["price", "value", "savings", "payment"],
-    steps: ["Acknowledge concern", "Explain value", "Present options", "Offer promotion"],
-    tips: ["Focus on long-term value", "Highlight savings", "Present payment options"]
   },
   {
     title: "Bad Experience",

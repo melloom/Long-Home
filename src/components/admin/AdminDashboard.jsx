@@ -80,13 +80,7 @@ const AdminDashboard = () => {
     tips: []
   });
   const [showAllCategories, setShowAllCategories] = useState(false);
-  const [categories, setCategories] = useState([
-    { id: 'all', name: 'All Categories' },
-    { id: 'follow-up', name: 'Follow-Up Required' },
-    { id: 'not-qualified', name: 'Not Qualified' },
-    { id: 'technical', name: 'Technical Issues' },
-    { id: 'external', name: 'External Factors' }
-  ]);
+  const [categories, setCategories] = useState([]);
   const [settings, setSettings] = useState({
     showDebugInfo: false,
     defaultSortOrder: 'newest',
@@ -124,6 +118,8 @@ const AdminDashboard = () => {
     icon: '📝',
     color: '#4CAF50'
   });
+  const [showUnarchiveModal, setShowUnarchiveModal] = useState(false);
+  const [selectedRebuttalToUnarchive, setSelectedRebuttalToUnarchive] = useState(null);
 
   // Fetch data from Firebase
   useEffect(() => {
@@ -527,6 +523,11 @@ const AdminDashboard = () => {
   const handleAddRebuttal = async (e) => {
     e.preventDefault();
     try {
+      // Check if user is authenticated
+      if (!currentUser) {
+        throw new Error('You must be logged in to add rebuttals');
+      }
+
       const newReb = {
         title: newRebuttal.title,
         category: newRebuttal.category,
@@ -537,7 +538,9 @@ const AdminDashboard = () => {
         },
         tags: newRebuttal.tags,
         icon: getCategoryIcon(newRebuttal.category),
-        color: getCategoryColor(newRebuttal.category)
+        color: getCategoryColor(newRebuttal.category),
+        createdAt: new Date().toISOString(),
+        createdBy: currentUser.uid
       };
 
       // Add to Firebase
@@ -635,22 +638,33 @@ const AdminDashboard = () => {
         throw new Error('Rebuttal not found');
       }
 
-      // Create new rebuttal in active collection
-      const newRebuttalRef = await rebuttalsService.addRebuttal({
-        ...rebuttal,
-        category: rebuttal.originalCategory || rebuttal.category || 'Uncategorized',
-        archivedAt: null,
-        archivedReason: null,
-        originalCategory: null
-      });
+      setSelectedRebuttalToUnarchive(rebuttal);
+      setShowUnarchiveModal(true);
+    } catch (error) {
+      console.error('Error preparing to unarchive rebuttal:', error);
+      alert('Failed to prepare unarchive operation. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Delete from archived collection
-      await rebuttalsService.deleteArchivedRebuttal(id);
+  const handleConfirmUnarchive = async () => {
+    if (!selectedRebuttalToUnarchive || !selectedCategory) {
+      alert('Please select a category to unarchive the rebuttal to.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await rebuttalsService.unarchiveRebuttal(selectedRebuttalToUnarchive.id, selectedCategory);
 
       // Update local state
-      setArchivedRebuttals(prev => prev.filter(r => r.id !== id));
+      setArchivedRebuttals(prev => prev.filter(r => r.id !== selectedRebuttalToUnarchive.id));
       await loadData(); // Reload data to reflect changes
 
+      setShowUnarchiveModal(false);
+      setSelectedRebuttalToUnarchive(null);
+      setSelectedCategory('');
       alert('Rebuttal unarchived successfully!');
     } catch (error) {
       console.error('Error unarchiving rebuttal:', error);
@@ -975,18 +989,24 @@ const AdminDashboard = () => {
         return (
           <div className="dashboard-content">
             <div className="dashboard-header">
-              <h2>Dashboard</h2>
+              <h2>Admin Dashboard</h2>
+              <div className="header-actions">
+                <button className="refresh-button" onClick={loadData}>
+                  <span>🔄</span> Refresh Data
+                </button>
+              </div>
             </div>
             <div className="dashboard-grid">
               {/* Enhanced Quick Stats */}
               <div className="dashboard-card enhanced-stats">
-                <h2>📈 Statistics</h2>
+                <h2>📈 Performance Overview</h2>
                 <div className="enhanced-stats-grid">
                   <div className="stat-card primary">
                     <div className="stat-icon">📚</div>
                     <div className="stat-content">
                       <h3>Total Rebuttals</h3>
                       <div className="stat-number">{stats.totalRebuttals}</div>
+                      <div className="stat-subtitle">Active rebuttals in the system</div>
                     </div>
                   </div>
                   
@@ -995,93 +1015,57 @@ const AdminDashboard = () => {
                     <div className="stat-content">
                       <h3>Archived</h3>
                       <div className="stat-number">{stats.totalArchived}</div>
-                    </div>
-                  </div>
-
-                  <div className="stat-card tertiary">
-                    <div className="stat-icon">👆</div>
-                    <div className="stat-content">
-                      <h3>Total Clicks</h3>
-                      <div className="stat-number">{stats.totalRebuttalClicks}</div>
-                    </div>
-                  </div>
-
-                  <div className="stat-card quaternary">
-                    <div className="stat-icon">📊</div>
-                    <div className="stat-content">
-                      <h3>Avg. Usage</h3>
-                      <div className="stat-number">{Math.round(stats.averageRebuttalUsage)}</div>
+                      <div className="stat-subtitle">Retired rebuttals</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Most Used Rebuttals */}
-              <div className="dashboard-card most-used-rebuttals">
-                <h2>🔥 Most Used Rebuttals</h2>
-                <div className="rebuttals-list">
-                  {stats.mostUsedRebuttals
-                    .slice(0, showAllRebuttals ? undefined : 5)
-                    .map((rebuttal, index) => (
-                      <div key={rebuttal.id} className="rebuttal-item">
-                        <div className="rebuttal-rank">#{index + 1}</div>
-                        <div className="rebuttal-info">
-                          <h3>{rebuttal.title}</h3>
-                          <span className="rebuttal-category">{rebuttal.category}</span>
-                        </div>
-                        <div className="rebuttal-stats">
-                          <div className="usage-count">
-                            <span className="count">{rebuttal.usageCount}</span>
-                            <span className="label">clicks</span>
-                          </div>
-                          <div className="usage-percentage">
-                            {rebuttal.percentage.toFixed(1)}%
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  {stats.mostUsedRebuttals.length > 5 && (
-                    <button 
-                      className="view-more-button"
-                      onClick={() => setShowAllRebuttals(!showAllRebuttals)}
-                    >
-                      {showAllRebuttals ? 'Show Less' : `Show ${stats.mostUsedRebuttals.length - 5} More`}
-                    </button>
-                  )}
+              {/* Quick Actions */}
+              <div className="dashboard-card quick-actions">
+                <h2>⚡ Quick Actions</h2>
+                <div className="action-buttons-enhanced">
+                  <button className="action-button-enhanced primary" onClick={() => setShowAddModal(true)}>
+                    <div className="action-icon">➕</div>
+                    <div className="action-content">
+                      <strong>Add New Rebuttal</strong>
+                      <p>Create a new rebuttal response</p>
+                    </div>
+                  </button>
+                  
+                  <button className="action-button-enhanced secondary" onClick={() => setActiveTab('categories')}>
+                    <div className="action-icon">📑</div>
+                    <div className="action-content">
+                      <strong>Manage Categories</strong>
+                      <p>Organize rebuttal categories</p>
+                    </div>
+                  </button>
+                  
+                  <button className="action-button-enhanced tertiary" onClick={() => setActiveTab('dispositions')}>
+                    <div className="action-icon">📋</div>
+                    <div className="action-content">
+                      <strong>Lead Dispositions</strong>
+                      <p>Manage lead status options</p>
+                    </div>
+                  </button>
                 </div>
               </div>
 
               {/* Category Performance */}
-              <div className="dashboard-card category-performance" key="category-performance">
-                <div className="category-header">
-                <h2>🎯 Category Insights</h2>
-                  <div className="category-actions">
-                    <button className="refresh-button" onClick={() => updateStats()}>
-                      <span>🔄</span>
-                    </button>
-                  </div>
-                </div>
+              <div className="dashboard-card category-performance">
+                <h2>📊 Category Performance</h2>
                 <div className="performance-content">
-                  <div className="category-stats-grid">
-                    <div className="category-stat-card" key="active-categories">
-                      <div className="stat-header">
-                        <span className="stat-icon">📊</span>
-                        <h3>Active Categories</h3>
+                  <div className="most-used-category">
+                    <div className="category-highlight">
+                      <div className="category-icon-large">
+                        {stats.mostUsedCategory?.icon || '📊'}
                       </div>
-                      <div className="stat-value">{stats.activeCategories || 0}</div>
-                      <div className="stat-trend positive">
-                        <span>↑</span> {stats.categoryGrowth || 0}% growth
-                      </div>
-                    </div>
-                    
-                    <div className="category-stat-card" key="most-used">
-                      <div className="stat-header">
-                        <span className="stat-icon">📈</span>
-                        <h3>Most Used</h3>
-                      </div>
-                      <div className="stat-value">{stats.mostUsedCategory?.name || 'N/A'}</div>
-                      <div className="stat-subtext">
-                        {stats.mostUsedCategory?.count || 0} rebuttals
+                      <div className="category-info">
+                        <strong>Most Active Category</strong>
+                        <p>{stats.mostUsedCategory?.name || 'No data'}</p>
+                        <div className="stat-subtext">
+                          {stats.mostUsedCategory?.count || 0} rebuttals
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1115,71 +1099,53 @@ const AdminDashboard = () => {
                             </div>
                             <div className="category-bar-container">
                               <div 
-                                className={`category-bar ${category.name === stats.mostUsedCategory?.name ? 'most-used' : 
-                                                         category.name === stats.leastUsedCategory?.name ? 'least-used' : ''}`}
+                                className={`category-bar ${index === 0 ? 'most-used' : index === stats.categoryDistribution.length - 1 ? 'least-used' : ''}`}
                                 style={{ width: `${category.percentage}%` }}
                               >
                                 <span className="bar-percentage">{category.percentage}%</span>
                               </div>
+                              <span className="category-count">{category.count}</span>
                             </div>
-                            <span className="category-count">{category.count} rebuttals</span>
                           </div>
                         ))}
-                      {stats.categoryDistribution?.length > 5 && (
-                        <button 
-                          className="view-more-button" 
-                          onClick={() => setShowAllCategories(!showAllCategories)}
-                        >
-                          {showAllCategories ? 'Show Less' : `Show ${stats.categoryDistribution.length - 5} More`}
-                        </button>
-                      )}
                     </div>
+                    {stats.categoryDistribution?.length > 5 && (
+                      <button 
+                        className="view-more-button"
+                        onClick={() => setShowAllCategories(!showAllCategories)}
+                      >
+                        {showAllCategories ? 'Show Less' : 'Show More'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Enhanced Quick Actions */}
-              <div className="dashboard-card quick-actions" key="quick-actions">
-                <h2>⚡ Quick Actions</h2>
-                <div className="action-buttons-enhanced">
-                  <button 
-                    key="add-rebuttal"
-                    className="action-button-enhanced primary"
-                    onClick={() => {
-                      setActiveTab('rebuttals');
-                      setShowAddModal(true);
-                    }}
-                  >
-                    <div className="action-icon">➕</div>
-                    <div className="action-content">
-                      <strong>Add New Rebuttal</strong>
-                      <p>Create fresh content</p>
+              {/* System Health */}
+              <div className="dashboard-card system-health">
+                <h2>🔧 System Health</h2>
+                <div className="health-metrics">
+                  <div className="health-metric">
+                    <div className="metric-icon">🔄</div>
+                    <div className="metric-info">
+                      <strong>Last Backup</strong>
+                      <p>{new Date().toLocaleDateString()}</p>
                     </div>
-                  </button>
-                  
-                  <button 
-                    key="manage-rebuttals"
-                    className="action-button-enhanced secondary"
-                    onClick={() => setActiveTab('rebuttals')}
-                  >
-                    <div className="action-icon">📝</div>
-                    <div className="action-content">
-                      <strong>Manage Rebuttals</strong>
-                      <p>Edit existing content</p>
+                  </div>
+                  <div className="health-metric">
+                    <div className="metric-icon">📊</div>
+                    <div className="metric-info">
+                      <strong>Data Integrity</strong>
+                      <p>All systems operational</p>
                     </div>
-                  </button>
-                  
-                  <button 
-                    key="manage-categories"
-                    className="action-button-enhanced tertiary"
-                    onClick={() => setActiveTab('categories')}
-                  >
-                    <div className="action-icon">🏷️</div>
-                    <div className="action-content">
-                      <strong>Manage Categories</strong>
-                      <p>Organize content types</p>
+                  </div>
+                  <div className="health-metric">
+                    <div className="metric-icon">⚡</div>
+                    <div className="metric-info">
+                      <strong>Performance</strong>
+                      <p>Optimal</p>
                     </div>
-                  </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1199,7 +1165,7 @@ const AdminDashboard = () => {
               <div className="rebuttals-actions">
                 <button 
                   className="add-rebuttal-button"
-                  onClick={() => setShowAddRebuttalModal(true)}
+                  onClick={() => setShowAddModal(true)}
                   style={{
                     backgroundColor: '#4CAF50',
                     color: 'white',
@@ -1245,20 +1211,11 @@ const AdminDashboard = () => {
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="category-filter"
                 >
-                  <option value="all">All Categories</option>
-                  <option value="not-interested">Not Interested</option>
-                  <option value="spouse-consultation">Spouse Consultation</option>
-                  <option value="one-legger">One Decision Maker</option>
-                  <option value="not-ready">Not Ready</option>
-                  <option value="curious">Just Curious</option>
-                  <option value="time-concern">Time Concern</option>
-                  <option value="cant-afford">Can't Afford</option>
-                  <option value="spouse">Spouse Issues</option>
-                  <option value="price-phone">Price Over Phone</option>
-                  <option value="repair">Repair Only</option>
-                  <option value="government-grants">Government Grants</option>
-                  <option value="no-request">No Request</option>
-                  <option value="bad-reviews">Bad Reviews</option>
+                  {categories.map(category => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="filter-stats">
@@ -1906,6 +1863,34 @@ const AdminDashboard = () => {
       alert('Failed to add category. Please try again.');
     }
   };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Fetch categories from database
+        const dbCategories = await rebuttalsService.getCategories();
+        console.log('Fetched categories:', dbCategories);
+        
+        // Format categories for the dropdown
+        const formattedCategories = [
+          { id: 'all', name: 'All Categories' },
+          ...dbCategories.map(cat => ({
+            id: cat.id,
+            name: cat.name
+          }))
+        ];
+        
+        setCategories(formattedCategories);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <div className="admin-dashboard">
@@ -2673,6 +2658,58 @@ const AdminDashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add this before the closing div of the component */}
+      {showUnarchiveModal && selectedRebuttalToUnarchive && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>Unarchive Rebuttal</h2>
+              <button onClick={() => {
+                setShowUnarchiveModal(false);
+                setSelectedRebuttalToUnarchive(null);
+                setSelectedCategory('');
+              }} className="modal-close-button">
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>Select a category to unarchive this rebuttal to:</p>
+              <select 
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="category-select"
+              >
+                <option value="">Select a category...</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="modal-footer">
+              <button 
+                onClick={() => {
+                  setShowUnarchiveModal(false);
+                  setSelectedRebuttalToUnarchive(null);
+                  setSelectedCategory('');
+                }} 
+                className="cancel-button"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmUnarchive}
+                className="confirm-button"
+                disabled={!selectedCategory || loading}
+              >
+                {loading ? 'Unarchiving...' : 'Unarchive'}
+              </button>
+            </div>
           </div>
         </div>
       )}

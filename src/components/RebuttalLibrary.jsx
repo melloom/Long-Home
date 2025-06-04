@@ -656,29 +656,18 @@ const RebuttalLibrary = ({ onNavigate, searchQuery }) => {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search rebuttals by title, content, or tags..."
+                  placeholder="Search rebuttals..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  onKeyDown={handleKeyDown}
-                  onFocus={() => setShowSuggestions(true)}
                   className="search-input"
                   aria-label="Search rebuttals"
-                  aria-expanded={showSuggestions}
-                  aria-controls="search-suggestions"
-                  aria-activedescendant={selectedIndex >= 0 ? `suggestion-${selectedIndex}` : undefined}
                 />
-                <button 
-                  className="quick-actions-button"
-                  onClick={() => setShowQuickActions(!showQuickActions)}
-                  aria-label="Quick actions"
-                >
-                  ⚡
-                </button>
                 {searchTerm && (
                   <button 
                     onClick={() => {
                       setSearchTerm('');
                       setShowSuggestions(false);
+                      setSearchSuggestions([]);
                     }} 
                     className="clear-search-button"
                     aria-label="Clear search"
@@ -692,37 +681,25 @@ const RebuttalLibrary = ({ onNavigate, searchQuery }) => {
               
               {/* Search Suggestions Dropdown */}
               {showSuggestions && searchSuggestions.length > 0 && (
-                <div className="search-suggestions-dropdown" id="search-suggestions">
+                <div className="search-suggestions-dropdown">
                   {searchSuggestions.map((suggestion, index) => (
                     <div
                       key={suggestion.id}
-                      id={`suggestion-${index}`}
                       className={`suggestion-item ${index === selectedIndex ? 'selected' : ''}`}
                       onClick={() => handleSuggestionClick(suggestion)}
-                      role="option"
-                      aria-selected={index === selectedIndex}
                     >
                       <span className="suggestion-icon">
-                        {getCategoryIcon(suggestion.category)}
+                        {suggestion.icon || '💬'}
                       </span>
                       <div className="suggestion-content">
                         <h4>{suggestion.title}</h4>
-                        <p>{suggestion.summary}</p>
-                        <div className="suggestion-tags">
-                          {suggestion.tags.slice(0, 3).map((tag, i) => (
-                            <span key={i} className="tag">{tag}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="relevance-badge">
-                        {suggestion.relevanceScore > 0.8 ? 'High' : 
-                         suggestion.relevanceScore > 0.5 ? 'Medium' : 'Low'}
+                        <p>{suggestion.description}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-              
+
               {searchTerm && (
                 <div className="search-results-count">
                   {filteredRebuttals.length} result{filteredRebuttals.length !== 1 ? 's' : ''} found

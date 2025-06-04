@@ -252,96 +252,15 @@ const CustomerService = ({ onNavigate, searchQuery }) => {
     return suggestions.sort((a, b) => b.relevanceScore - a.relevanceScore);
   };
 
-  const handleSearch = (term) => {
-    const correctedTerm = normalizeSearchQuery(term);
-    setSearchTerm(correctedTerm);
-  };
-
-  // Debounce function
-  const debounce = (func, wait) => {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  };
-
-  // Get semantic score for search relevance
-  const getSemanticScore = (query, text) => {
-    const queryWords = query.toLowerCase().split(' ');
-    const textWords = text.toLowerCase().split(' ');
-    let score = 0;
-
-    queryWords.forEach(word => {
-      textWords.forEach(textWord => {
-        if (textWord.includes(word) || word.includes(textWord)) {
-          score += 1;
-        }
-      });
-    });
-
-    return score / queryWords.length;
-  };
-
-  // Perform intelligent search
-  const performIntelligentSearch = (query) => {
-    if (!query.trim()) {
-      setSearchSuggestions([]);
-      return;
-    }
-
-    const suggestions = [];
-    const searchTerms = query.toLowerCase().split(' ');
-
-    allServiceTopics.forEach(topic => {
-      const titleScore = getSemanticScore(query, topic.title);
-      const descriptionScore = getSemanticScore(query, topic.description);
-      const categoryScore = getSemanticScore(query, topic.topic);
-      const stepsScore = topic.steps.reduce((score, step) => 
-        score + getSemanticScore(query, step), 0) / topic.steps.length;
-      const tipsScore = topic.tips.reduce((score, tip) => 
-        score + getSemanticScore(query, tip), 0) / topic.tips.length;
-
-      const relevanceScore = Math.max(
-        titleScore * 2, // Title matches are more important
-        descriptionScore,
-        categoryScore,
-        stepsScore,
-        tipsScore
-      );
-
-      if (relevanceScore > 0.3) {
-        suggestions.push({
-          ...topic,
-          relevanceScore
-        });
-      }
-    });
-
-    // Sort by relevance score
-    suggestions.sort((a, b) => b.relevanceScore - a.relevanceScore);
-    setSearchSuggestions(suggestions);
-  };
-
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce((query) => {
-      performIntelligentSearch(query);
-    }, 300),
-    []
-  );
-
-  // Handle search input changes
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
     setShowSuggestions(true);
     setSelectedIndex(-1);
-    debouncedSearch(value);
+    
+    // Perform search immediately
+    const suggestions = getSearchSuggestions(value);
+    setSearchSuggestions(suggestions);
   };
 
   // Handle keyboard navigation
@@ -382,20 +301,24 @@ const CustomerService = ({ onNavigate, searchQuery }) => {
   };
 
   const filteredTopics = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return allServiceTopics;
+    }
+
+    const searchTermLower = searchTerm.toLowerCase();
     return allServiceTopics.filter(topic => {
       const matchesCategory = selectedTopic === 'all' || topic.topic === selectedTopic;
-      const matchesSearch = !searchTerm || 
-        topic.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        topic.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (topic.steps && topic.steps.some(step => step.toLowerCase().includes(searchTerm.toLowerCase()))) ||
-        (topic.tips && topic.tips.some(tip => tip.toLowerCase().includes(searchTerm.toLowerCase()))) ||
-        (topic.keywords && topic.keywords.some(keyword => keyword.toLowerCase().includes(searchTerm.toLowerCase())));
+      
+      // Search in title, description, steps, tips, and keywords
+      const matchesSearch = 
+        topic.title?.toLowerCase().includes(searchTermLower) ||
+        topic.description?.toLowerCase().includes(searchTermLower) ||
+        topic.steps?.some(step => step.toLowerCase().includes(searchTermLower)) ||
+        topic.tips?.some(tip => tip.toLowerCase().includes(searchTermLower)) ||
+        topic.keywords?.some(keyword => keyword.toLowerCase().includes(searchTermLower));
       
       return matchesCategory && matchesSearch;
-    }).sort((a, b) => {
-      // Sort by title
-      return a.title.localeCompare(b.title);
-    });
+    }).sort((a, b) => a.title.localeCompare(b.title));
   }, [allServiceTopics, selectedTopic, searchTerm]);
 
   const handleServiceClick = (service) => {
@@ -540,29 +463,20 @@ const CustomerService = ({ onNavigate, searchQuery }) => {
               </svg>
               <input
                 type="text"
-                placeholder="Search service topics by title, category, or steps..."
+                placeholder="Search service topics..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 onKeyDown={handleKeyDown}
                 onFocus={() => setShowSuggestions(true)}
                 className="search-input"
                 aria-label="Search service topics"
-                aria-expanded={showSuggestions}
-                aria-controls="search-suggestions"
-                aria-activedescendant={selectedIndex >= 0 ? `suggestion-${selectedIndex}` : undefined}
               />
-              <button 
-                className="quick-actions-button"
-                onClick={() => setShowQuickActions(!showQuickActions)}
-                aria-label="Quick actions"
-              >
-                ⚡
-              </button>
               {searchTerm && (
                 <button 
                   onClick={() => {
                     setSearchTerm('');
                     setShowSuggestions(false);
+                    setSearchSuggestions([]);
                   }} 
                   className="clear-search-button"
                   aria-label="Clear search"
@@ -610,18 +524,11 @@ const CustomerService = ({ onNavigate, searchQuery }) => {
                     aria-selected={index === selectedIndex}
                   >
                     <span className="suggestion-icon">
-                      {topics.find(t => t.id === suggestion.topic)?.icon}
+                      {topics.find(t => t.id === suggestion.topic)?.icon || '📋'}
                     </span>
                     <div className="suggestion-content">
                       <h4>{suggestion.title}</h4>
                       <p>{suggestion.description}</p>
-                      <div className="suggestion-tags">
-                        <span className="tag">{suggestion.topic}</span>
-                      </div>
-                    </div>
-                    <div className="relevance-badge">
-                      {suggestion.relevanceScore > 0.8 ? 'High' : 
-                       suggestion.relevanceScore > 0.5 ? 'Medium' : 'Low'}
                     </div>
                   </div>
                 ))}
@@ -678,7 +585,9 @@ const CustomerService = ({ onNavigate, searchQuery }) => {
                         </span>
                         <h3>{topic.title}</h3>
                       </div>
-                      <p className="category-description">{topic.description}</p>
+                      <div className="category-description">
+                        <p>{topic.description}</p>
+                      </div>
                       
                       <div className="category-details">
                         <div className="key-steps">
@@ -698,12 +607,12 @@ const CustomerService = ({ onNavigate, searchQuery }) => {
                             ))}
                           </ul>
                         </div>
-                        
-                        <div className="tags">
-                          {topic.keywords.map((keyword, index) => (
-                            <span key={index} className="tag">{keyword}</span>
-                          ))}
-                        </div>
+                      </div>
+                      
+                      <div className="category-tags">
+                        {topic.keywords.map((keyword, index) => (
+                          <span key={index} className="category-tag">{keyword}</span>
+                        ))}
                       </div>
                     </div>
                   ))
@@ -715,38 +624,41 @@ const CustomerService = ({ onNavigate, searchQuery }) => {
       )}
 
       {/* Service Detail Modal */}
-      {showModal && (selectedService || urgentRebuttal) && (
+      {showModal && selectedService && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{(urgentRebuttal || selectedService).title}</h2>
+              <h2>{selectedService.title}</h2>
               <button className="modal-close" onClick={closeModal}>×</button>
             </div>
             <div className="modal-body">
               <div className="modal-section">
                 <h3>Description</h3>
-                <p>{(urgentRebuttal || selectedService).description}</p>
+                <p>{selectedService.description}</p>
               </div>
+              
               <div className="modal-section">
                 <h3>Steps</h3>
                 <ol>
-                  {(urgentRebuttal || selectedService).steps.map((step, index) => (
+                  {selectedService.steps.map((step, index) => (
                     <li key={index}>{step}</li>
                   ))}
                 </ol>
               </div>
+              
               <div className="modal-section">
                 <h3>Tips</h3>
                 <ul>
-                  {(urgentRebuttal || selectedService).tips.map((tip, index) => (
+                  {selectedService.tips.map((tip, index) => (
                     <li key={index}>{tip}</li>
                   ))}
                 </ul>
               </div>
+              
               <div className="modal-section">
                 <h3>Related Keywords</h3>
                 <div className="keyword-tags">
-                  {(urgentRebuttal || selectedService).keywords.map((keyword, index) => (
+                  {selectedService.keywords.map((keyword, index) => (
                     <span key={index} className="keyword-tag">{keyword}</span>
                   ))}
                 </div>
