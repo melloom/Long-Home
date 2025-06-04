@@ -222,13 +222,13 @@ const userService = {
       // Delete from Firestore
       await deleteDoc(doc(db, 'users', userId));
       
-      // Call the server endpoint to delete from Firebase Auth
-      const response = await fetch('/api/users/delete', {
+      // Call the Netlify function to delete from Firebase Auth
+      const response = await fetch('/.netlify/functions/deleteUser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ uid: userId }),
       });
 
       if (!response.ok) {
