@@ -301,13 +301,15 @@ const CustomerService = ({ onNavigate, searchQuery }) => {
   };
 
   const filteredTopics = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return allServiceTopics;
-    }
-
-    const searchTermLower = searchTerm.toLowerCase();
+    const searchTermLower = searchTerm.toLowerCase().trim();
+    
     return allServiceTopics.filter(topic => {
       const matchesCategory = selectedTopic === 'all' || topic.topic === selectedTopic;
+      
+      // If there's no search term, only filter by category
+      if (!searchTermLower) {
+        return matchesCategory;
+      }
       
       // Search in title, description, steps, tips, and keywords
       const matchesSearch = 
